@@ -35,7 +35,7 @@ class SplashScreen extends Controller {
 				width="match_parent"
 				orientation="vertical"
 				gravity="center_horizontal"
-				padding="20,273,20,297"
+				padding="20,180,20,257"
 				background="#ffffffff"
 				cornerRadius="0"
 				root={true}

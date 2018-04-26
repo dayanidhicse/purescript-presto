@@ -34,7 +34,7 @@ class StatusScreen extends Controller {
 				height="match_parent"
 				width="match_parent"
 				orientation="vertical"
-				padding="20,273,20,137"
+				padding="20,170,20,137"
 				background="#ffffffff"
 				cornerRadius="0"
 				root={true}

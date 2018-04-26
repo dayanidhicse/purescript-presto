@@ -72,7 +72,8 @@ class AskMobileNumberScreen extends Controller {
 				</LinearLayout>
 				<LinearLayout
 					id={this.idSet.Screen_Content}
-					height="576"
+					height="0"
+					weight="1"
 					width="match_parent"
 					orientation="vertical"
 					gravity="center_horizontal"
@@ -156,6 +157,7 @@ class AskMobileNumberScreen extends Controller {
 					<LinearLayout
 						id={this.idSet.Space}
 						weight="1"
+						height="0"
 						accessibilityHint={HINT.MOBILENUMBERSCREEN_SPACE}
 						style={this.style_Space} />
 					<LinearLayout
@@ -166,8 +168,7 @@ class AskMobileNumberScreen extends Controller {
 						padding="0,15,0,15"
 						background="#ff202296"
 						cornerRadius="4"
-						accessibilityHint={HINT.MOBILENUMBERSCREEN_BUTTON}
-						style={this.style_Button}>
+						accessibilityHint={HINT.MOBILENUMBERSCREEN_BUTTON}>
 						<TextView
 							id={this.idSet.ButtonText}
 							height="18"

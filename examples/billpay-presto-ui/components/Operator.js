@@ -54,7 +54,7 @@ class Operator extends Controller {
 					weight="1"
 					textSize="24"
 					color="#ff000000"
-					fontStyle="SourceSansPro-Regular"
+					fontStyle="Source Sans Pro-Regular"
 					gravity="left"
 					accessibilityHint={HINT.OPERATOR_OPERATORTEXT}
 					text={this.props.operatorName}

@@ -14,7 +14,8 @@ class AskAmountScreen extends View {
 		}
 
 		this.style_ButtonText = {
-			width : "match_parent"
+			width : "match_parent",
+			onClick : this.onRechargeClick.bind(this)
 		}
 
 		this.style_Button = {

@@ -5,8 +5,9 @@
   "scripts": {
     "compile": "webpack --progress --colors --optimize-minimize",
     "compile-psc": "pulp build",
-    "start": "npm run start-psc & webpack-dev-server --watch",
-    "start-psc": "pulp --watch build"
+    "start": "npm run start-psc & webpack-dev-server --watch --host 0.0.0.0",
+    "start-psc": "pulp --watch build",
+    "package-android": "webpack --optimize-minimize && cp ./dist/index_bundle.js ./android/app/src/main/assets/"
   },
   "dependencies": {
     "any-base": "^1.0.1",
