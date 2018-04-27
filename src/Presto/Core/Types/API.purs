@@ -83,9 +83,9 @@ responsePayload :: forall a. Response a -> a
 responsePayload (Response r) = r.response
 
 newtype ErrorPayload = ErrorPayload
-  { error :: Boolean
-  , errorMessage :: String
-  , userMessage :: String
+  { status :: String
+  , responseCode :: String
+  , responseMessage :: String
   }
 
 type ErrorResponse = Response ErrorPayload
@@ -118,14 +118,14 @@ instance encodeRequestG :: Encode Request where
   encode = defaultEncode
 instance decodeRequestG :: Decode Request where
   decode = defaultDecode
-  
+
 derive instance genericErrorPayload :: Generic ErrorPayload _
 instance encodeErrorPayload :: Encode ErrorPayload where
   encode = defaultEncode
 instance decodeErrorPayload :: Decode ErrorPayload where
   decode = defaultDecode
 instance showErrorPayload :: Show ErrorPayload where
-  show (ErrorPayload payload) = payload.userMessage
+  show (ErrorPayload payload) = payload.responseMessage
 
 derive instance genericResponse :: Generic (Response a) _
 instance decodeResponseG :: Decode a => Decode (Response a) where
