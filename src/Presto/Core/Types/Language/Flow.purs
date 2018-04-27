@@ -2,6 +2,7 @@ module Presto.Core.Types.Language.Flow where
 
 import Prelude
 
+import Control.Monad.Aff (makeAff)
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Free (Free, liftF)
@@ -11,11 +12,13 @@ import Data.Foreign.Class (class Decode, class Encode)
 import Data.Maybe (Maybe)
 import Data.Time.Duration (class Duration, Milliseconds, fromDuration)
 import Presto.Core.Types.API (class RestEndpoint, ErrorResponse, Headers, RegTokens)
-import Presto.Core.Types.App (AppFlow)
+import Presto.Core.Types.App (AppFlow, UIFlow)
 import Presto.Core.Types.Language.APIInteract (apiInteract)
 import Presto.Core.Types.Language.Interaction (class Interact, Interaction, interact, interactConv)
 import Presto.Core.Types.Language.Storage (Key, class Serializable, serialize, deserialize)
 import Presto.Core.Types.Permission (Permission, PermissionStatus, PermissionResponse)
+import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
+import PrestoDOM.Types.Core (Screen)
 
 data Authorization = RegistrationTokens RegTokens
 
@@ -43,6 +46,10 @@ data FlowMethodF a s
   | HandleError (Flow (ErrorHandler s)) (s -> a)
   | CheckPermissions (Array Permission) (PermissionStatus -> a)
   | TakePermissions (Array Permission) (Array PermissionResponse -> a)
+  | InitUIWithScreen (forall eff. UIFlow eff s) (s -> a)
+  | InitUI (forall eff. UIFlow eff s) (s -> a)
+  | RunScreen (forall eff. UIFlow eff s) (s -> a)
+  | ForkScreen (forall eff. UIFlow eff s) a
 
 type FlowMethod s a = FlowMethodF a s
 newtype FlowWrapper a = FlowWrapper (Exists (FlowMethodF a))
@@ -136,6 +143,22 @@ launch flow = wrap $ Fork flow id
 -- | Runs any Aff as part of the flow
 doAff :: forall s. (forall eff. AppFlow eff s) -> Flow s
 doAff aff = wrap $ DoAff aff id
+
+-- | Initialize all states and machines required by PrestoDOM. Returns control back immediately.
+initUI :: Flow Unit
+initUI = wrap $ InitUI (makeAff (\cb -> PrestoDOM.initUI cb)) id
+
+-- | Initialize all states and machines required by PrestoDOM. Takes a PrestoDOM Screen and returns control back immediately.
+initUIWithScreen :: forall action state. (forall eff. Screen action state eff Unit) -> Flow Unit
+initUIWithScreen screen = wrap $ InitUIWithScreen (makeAff (\cb -> PrestoDOM.initUIWithScreen screen cb)) id
+
+-- | Runs PrestoDOM Screen and returns the result. In this case, the whole screen is rerendered.
+runScreen :: forall action state s. (forall eff. Screen action state eff s) -> Flow s
+runScreen screen = wrap $ RunScreen (makeAff (\cb -> PrestoDOM.runScreen screen cb)) id
+
+-- | Forks PrestoDOM Screen and returns control back immediately.
+forkScreen :: forall action state s. (forall eff. Screen action state eff s) -> Flow Unit
+forkScreen screen = wrap $ ForkScreen (makeAff (\cb -> PrestoDOM.runScreen screen cb)) unit
 
 -- | Awaits result from a forked flow.
 await :: forall s. Control s -> Flow s
