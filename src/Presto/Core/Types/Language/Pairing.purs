@@ -6,6 +6,7 @@ import Control.Comonad.Cofree (Cofree, head, tail)
 import Control.Monad.Free (Free, resume)
 import Data.Either (Either(..))
 import Data.Identity (Identity(..))
+import Data.Tuple (Tuple, uncurry)
 
 
 -- | Pair two functors together
@@ -15,6 +16,12 @@ class (Functor f, Functor g) <= Pairing f g where
 
 instance pairingIdentity :: Pairing Identity Identity where
     pair p (Identity a) (Identity b) = p a b
+
+instance pairingFuncTuple :: Pairing ((->) a) (Tuple a) where
+    pair p f = uncurry (p <<< f)
+
+instance pairingTupleFunc :: Pairing (Tuple a) ((->) a) where
+    pair p f g = pair (flip p) g f
 
 -- | pairing a Free and Cofree together
 instance pairingFreeCofree :: (Functor f, Functor g, Pairing f g) => Pairing (Cofree f) (Free g) where
