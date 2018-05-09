@@ -4,8 +4,8 @@ import Prelude
 
 import Control.Comonad.Cofree (Cofree)
 import Data.Bifunctor (rmap)
-import Data.Tuple (Tuple(..))
-import Presto.Core.Types.Language.Interaction (ForeignIn(..), ForeignOut(..), InteractionF(..))
+import Data.Tuple (Tuple)
+import Presto.Core.Types.Language.Interaction (ForeignIn, ForeignOut, InteractionF(..))
 import Presto.Core.Types.Language.Pairing (class Pairing, pair)
 
 data CoInteractionF a = CoRequest (ForeignIn -> Tuple ForeignOut a)

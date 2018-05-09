@@ -5,8 +5,10 @@ import Prelude
 import Control.Comonad.Cofree (Cofree, head, tail)
 import Control.Monad.Free (Free, resume)
 import Data.Either (Either(..))
+import Data.Functor.Coproduct (Coproduct(..))
+import Data.Functor.Product (Product(..))
 import Data.Identity (Identity(..))
-import Data.Tuple (Tuple, uncurry)
+import Data.Tuple (Tuple(..), uncurry)
 
 
 -- | Pair two functors together
@@ -28,3 +30,7 @@ instance pairingFreeCofree :: (Functor f, Functor g, Pairing f g) => Pairing (Co
     pair p cf f = case resume f of
                     Right a -> p (head cf) a
                     Left f' -> pair (pair p) (tail cf) f'
+
+instance pairingCoProduct :: (Functor g, Functor f, Functor k, Functor h, Pairing g f, Pairing k h) => Pairing (Product g k) (Coproduct f h) where
+    pair p (Product (Tuple g _)) (Coproduct (Left f)) = pair p g f
+    pair p (Product (Tuple _ k)) (Coproduct (Right h)) = pair p k h
