@@ -24,6 +24,9 @@ newtype ForeignOut = ForeignOut Foreign
 data InteractionF next
   = Request ForeignIn (ForeignOut -> next)
 
+instance functorInteractionF :: Functor InteractionF where
+  map f (Request i o) = Request i (o >>> f)
+
 -- public interface to Interaction:
 
 -- | Free monadic Interaction type. Denotes a request-response interaction.
