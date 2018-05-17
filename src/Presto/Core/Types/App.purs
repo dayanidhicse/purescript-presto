@@ -24,7 +24,6 @@ foreign import data UI :: Effect
 
 type AppEffects eff =
     ( avar :: AVAR
-    , ref :: REF
     , frp :: FRP
     , dom :: DOM
     , ui :: UI
@@ -36,4 +35,4 @@ type AppEffects eff =
     | eff
     )
 type AppFlow eff = Aff (AppEffects eff)
-type UIFlow eff = Aff (ref :: REF, frp :: FRP, dom :: DOM | eff)
+type UIFlow eff = Aff (frp :: FRP, dom :: DOM | eff)
