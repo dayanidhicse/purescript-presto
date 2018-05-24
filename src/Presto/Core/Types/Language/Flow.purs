@@ -8,6 +8,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Free (Free, liftF)
 import Data.Either (Either, either)
+import Data.Exists (Exists)
 import Data.Maybe (Maybe)
 import Data.Time.Duration (Milliseconds)
 import Presto.Core.Types.API (class RestEndpoint, ErrorResponse, Headers, RegTokens)
@@ -17,8 +18,6 @@ import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
 import PrestoDOM.Types.Core (Screen)
 import Unsafe.Coerce (unsafeCoerce)
 
-foreign import data Exists :: (Type -> Type -> Type) -> Type
-
 data Authorization = RegistrationTokens RegTokens
 
 class Monad m <= IsFlow m where
@@ -27,12 +26,14 @@ class Monad m <= IsFlow m where
 newtype Control s = Control (AVar s)
 
 -- | Algebra of the Flow free language.
-data FlowMethodF a m s
-  = Fork (m s) (Control s -> a)
+data FlowMethodF a s
+  = Fork (Flow s) (Control s -> a)
   | DoAff (forall eff. AppFlow eff s) (s -> a)
   | Await (Control s) (s -> a)
   | Delay Milliseconds a
-  | OneOf (Array (m s)) (s -> a)
+  | OneOf (Array (Flow s)) (s -> a)
+
+type FlowMethod s a = FlowMethodF a s
 
 newtype FlowWrapper a = FlowWrapper (Exists (FlowMethodF a))
 
@@ -40,15 +41,15 @@ newtype FlowWrapper a = FlowWrapper (Exists (FlowMethodF a))
 type Flow a = Free FlowWrapper a
 
 -- | FlowWrapper for existential type.
-wrap :: forall a m s. FlowMethodF a m s -> Flow a
+wrap :: forall a s. FlowMethodF a s -> Flow a
 wrap = liftF <<< FlowWrapper <<< unsafeCoerce
 
 -- | Forks a flow and returns a control structure for getting results back (like Future).
-fork :: forall m s. IsFlow m => m s -> Flow (Control s)
+fork :: forall s. Flow s -> Flow (Control s)
 fork flow = wrap $ Fork flow id
 
 -- | Forks a flow and returns a void control structure.
-launch :: forall m. IsFlow m => m Unit -> Flow (Control Unit)
+launch :: Flow Unit -> Flow (Control Unit)
 launch flow = wrap $ Fork flow id
 
 -- | Runs any Aff as part of the flow

@@ -2,28 +2,37 @@ module Presto.Core.Language.Runtime.Store where
 
 import Prelude
 
-import Control.Comonad.Cofree (Cofree)
-import Data.Array.ST.Iterator (next)
-import Data.Bifunctor (rmap)
-import Data.Maybe (Maybe)
-import Data.Tuple (Tuple(..))
-import Presto.Core.Types.Language.Pairing (class Pairing, pair)
+import Control.Monad.Aff.AVar (AVar, putVar, readVar, takeVar)
+import Control.Monad.Free (foldFree)
+import Control.Monad.State.Trans as S
+import Control.Monad.Trans.Class (lift)
+import Data.NaturalTransformation (NaturalTransformation)
+import Data.StrMap (StrMap, insert, lookup)
+import Presto.Core.LocalStorage (getValueFromLocalStore, setValueToLocalStore)
+import Presto.Core.Types.App (AppFlow)
 import Presto.Core.Types.Language.Storage (Key)
-import Presto.Core.Types.Language.Store (Store, StoreF(..))
+import Presto.Core.Types.Language.Store (Store(..), StoreF(..), StoreM)
 
-newtype CoStoreF a = CoStoreF {
-    get :: Store -> Key -> Tuple (Maybe String) a
-  , set :: Store -> Key -> String -> a
-}
+type St = AVar (StrMap String)
+type InterpreterSt eff a = S.StateT St (AppFlow eff) a
 
-instance functorCoStoreF :: Functor CoStoreF where 
-    map f (CoStoreF co) = CoStoreF {
-        get: \s k -> rmap f $ co.get s k
-      , set: \s k v -> f $ co.set s k v
-    }
+readState :: forall eff. InterpreterSt eff (StrMap String)
+readState = S.get >>= (lift <<< readVar)
 
-instance pairingCoStore :: Pairing CoStoreF StoreF where
-    pair p (CoStoreF co) (Get s k next) = pair p (co.get s k) next
-    pair p (CoStoreF co) (Set s k v next) = p (co.set s k v) next
+updateState :: forall eff. Key -> String -> InterpreterSt eff Unit
+updateState key value = do
+  stVar <- S.get
+  st <- lift $ takeVar stVar
+  let st' = insert key value st
+  lift $ putVar st' stVar
 
-type CoStore = Cofree CoStoreF
+interpretStoreF :: forall eff. NaturalTransformation StoreF (InterpreterSt eff)
+interpretStoreF (Get LocalStore key next) = lift $ getValueFromLocalStore key >>= (pure <<< next)
+interpretStoreF (Set LocalStore key value next) = do
+    lift $ setValueToLocalStore key value
+    pure next
+interpretStoreF (Get InMemoryStore key next) = readState >>= (lookup key >>> next >>> pure)
+interpretStoreF (Set InMemoryStore key value next) = updateState key value *> pure next
+
+runStoreM :: forall eff. NaturalTransformation StoreM (InterpreterSt eff)
+runStoreM = foldFree interpretStoreF

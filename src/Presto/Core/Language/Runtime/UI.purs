@@ -2,50 +2,35 @@ module Presto.Core.Language.Runtime.UI where
 
 import Prelude
 
-import Control.Comonad.Cofree (Cofree)
-import Data.Bifunctor (rmap)
-import Data.Exists (Exists, mkExists)
-import Data.Tuple (Tuple)
-import Presto.Core.Types.App (UIFlow)
-import Presto.Core.Types.Language.Interaction (Interaction)
-import Presto.Core.Types.Language.Pairing (class Pairing, pair)
-import Presto.Core.Types.Language.UI (ErrorHandler, Gui, GuiF(..), GuiMethodF(..), UIResult)
-import Unsafe.Coerce (unsafeCoerce)
+import Control.Monad.Aff (error, forkAff, throwError)
+import Control.Monad.Free (foldFree)
+import Control.Monad.Trans.Class (lift)
+import Data.Exists (runExists)
+import Data.NaturalTransformation (NaturalTransformation)
+import Presto.Core.Language.Runtime.Interaction (runInteraction)
+import Presto.Core.Language.Runtime.Interpreter (UIRunner)
+import Presto.Core.Language.Runtime.Store (InterpreterSt)
+import Presto.Core.Types.Language.UI (ErrorHandler(..), Gui, GuiF(..), GuiMethodF(..))
 
-newtype CoGuiMethodF s a = CoGuiMethodF {
-    runUI :: (Interaction (UIResult s)) -> Tuple (UIResult s) a
-  , forkUI :: (Interaction (UIResult s)) -> a
-  , initUIWithScreen :: (forall eff. UIFlow eff s) -> Tuple s a
-  , initUI :: (forall eff. UIFlow eff s) -> Tuple s a
-  , runScreen :: (forall eff. UIFlow eff s) -> Tuple s a
-  , forkScreen :: (forall eff. UIFlow eff s) -> a
-  , handleError :: Gui (ErrorHandler s) -> Tuple s a
-}
 
-newtype CoGuiF a = CoGuiF (Exists (CoGuiMethodF a))
+runErrorHandler :: forall eff s. ErrorHandler s -> InterpreterSt eff s
+runErrorHandler (ThrowError msg) = throwError $ error msg
+runErrorHandler (ReturnResult res) = pure res
 
-instance functorCoGuiMethodF :: Functor CoGuiF where
-    map f (CoGuiF eo) = CoGuiF $ mkExists $ g $ unsafeCoerce eo
-        where
-            g (CoGuiMethodF co) = CoGuiMethodF {
-                runUI: co.runUI >>> rmap f
-              , forkUI: co.forkUI >>> f
-              , initUIWithScreen: co.initUIWithScreen >>> rmap f
-              , initUI: co.initUI >>> rmap f
-              , runScreen: co.runScreen >>> rmap f
-              , forkScreen: co.forkScreen >>> f
-              , handleError: co.handleError >>> rmap f
-            }
+type GuiMethodFF s a = GuiMethodF a s
 
-instance pairingCoGui :: Pairing CoGuiF GuiF where
-    pair p (CoGuiF eo) (GuiF ao) = doPair (unsafeCoerce eo) (unsafeCoerce ao)
-        where
-            doPair (CoGuiMethodF co) (RunUI req next) = pair p (co.runUI req) next
-            doPair (CoGuiMethodF co) (ForkUI req next) = p (co.forkUI req) next
-            doPair (CoGuiMethodF co) (InitUIWithScreen req next) = pair p (co.initUIWithScreen req) next
-            doPair (CoGuiMethodF co) (InitUI req next) = pair p (co.initUI req) next
-            doPair (CoGuiMethodF co) (RunScreen req next) = pair p (co.runScreen req) next
-            doPair (CoGuiMethodF co) (ForkScreen req next) = p (co.forkScreen req) next
-            doPair (CoGuiMethodF co) (HandleError req next) = pair p (co.handleError req) next
+interpretGuiMethodF :: forall s eff. UIRunner -> NaturalTransformation (GuiMethodFF s) (InterpreterSt eff)
+interpretGuiMethodF uiRunner (RunUI uiInteraction nextF) =
+    lift $ runInteraction uiRunner uiInteraction >>= (pure <<< nextF)
+interpretGuiMethodF uiRunner (ForkUI uiInteraction next) = do
+    _ <- lift $ forkAff $ runInteraction uiRunner uiInteraction
+    pure next
+interpretGuiMethodF _ (InitUIWithScreen uiFlow nextF) = lift uiFlow >>= (pure <<< nextF)
+interpretGuiMethodF _ (InitUI uiFlow nextF) = lift uiFlow >>= (pure <<< nextF)
+interpretGuiMethodF _ (RunScreen uiFlow nextF) = lift uiFlow >>= (pure <<< nextF)
+interpretGuiMethodF _ (ForkScreen uiFlow nextF) = lift (forkAff uiFlow) *> pure nextF
+interpretGuiMethodF uiRunner (HandleError flow nextF) =
+    foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g) flow >>= runErrorHandler >>= (pure <<< nextF)
 
-type CoGui = Cofree CoGuiF
+runUI :: forall eff. UIRunner -> NaturalTransformation Gui (InterpreterSt eff)
+runUI uiRunner = foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g)
