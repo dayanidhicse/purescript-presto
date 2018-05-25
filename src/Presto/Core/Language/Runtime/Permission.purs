@@ -4,7 +4,8 @@ import Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Free (foldFree)
-import Presto.Core.Types.App (AppFlow, STORAGE)
+import Presto.Core.Types.App (STORAGE)
+import Presto.Core.Types.Language.Flow (Flow, doAff)
 import Presto.Core.Types.Language.Permission (PermissionF(..), PermissionM)
 import Presto.Core.Types.Permission (Permission, PermissionStatus, PermissionResponse)
 
@@ -12,9 +13,9 @@ type PermissionCheckRunner = forall e. Array Permission -> Aff (storage :: STORA
 type PermissionTakeRunner = forall e. Array Permission -> Aff (storage :: STORAGE | e) (Array PermissionResponse)
 data PermissionRunner = PermissionRunner PermissionCheckRunner PermissionTakeRunner
 
-interpretPermissionF :: forall eff. PermissionRunner -> PermissionF ~> AppFlow eff
-interpretPermissionF (PermissionRunner check _) (CheckPermissions permissions nextF) = check permissions >>= (pure <<< nextF)
-interpretPermissionF (PermissionRunner _ take) (TakePermissions permissions nextF) = take permissions >>= (pure <<< nextF)
+interpretPermissionF :: PermissionRunner -> PermissionF ~> Flow
+interpretPermissionF (PermissionRunner check _) (CheckPermissions permissions nextF) = doAff (check permissions) >>= (pure <<< nextF)
+interpretPermissionF (PermissionRunner _ take) (TakePermissions permissions nextF) = doAff (take permissions) >>= (pure <<< nextF)
 
-runPermission :: forall eff. PermissionRunner -> PermissionM ~> AppFlow eff
+runPermission :: PermissionRunner -> PermissionM ~> Flow
 runPermission pRunner = foldFree (interpretPermissionF pRunner)

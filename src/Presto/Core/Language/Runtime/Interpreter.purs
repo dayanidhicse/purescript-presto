@@ -1,9 +1,5 @@
 module Presto.Core.Language.Runtime.Interpreter
   ( Runtime(..)
-  , UIRunner
-  , PermissionCheckRunner
-  , PermissionTakeRunner
-  , PermissionRunner(..)
   , run
   ) where
 
@@ -18,10 +14,9 @@ import Control.Monad.Trans.Class (lift)
 import Control.Parallel (parOneOf)
 import Data.Exists (runExists)
 import Data.Tuple (Tuple(..))
-import Presto.Core.Language.Runtime.API (APIRunner)
+import Presto.Core.Language.Runtime.Interaction (APIRunner, UIRunner)
 import Presto.Core.Language.Runtime.Permission (PermissionRunner(..))
 import Presto.Core.Language.Runtime.Store (InterpreterSt)
-import Presto.Core.Language.Runtime.UI (UIRunner)
 import Presto.Core.Types.App (STORAGE, UI)
 import Presto.Core.Types.Language.Flow (Control(..), Flow, FlowMethodF(..), FlowWrapper(..), FlowMethod)
 import Presto.Core.Types.Permission (Permission, PermissionResponse, PermissionStatus)
