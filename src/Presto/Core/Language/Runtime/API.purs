@@ -5,13 +5,14 @@ import Prelude
 import Control.Monad.Free (foldFree)
 import Data.Exists (runExists)
 import Data.NaturalTransformation (NaturalTransformation)
-import Presto.Core.Language.Runtime.Interpreter (Runtime(..))
 import Presto.Core.Types.App (AppFlow)
 import Presto.Core.Types.Language.API (ApiF(..), ApiMethodF(..), API)
+import Presto.Core.Language.Runtime.Interaction (APIRunner, runAPIInteraction)
 
-interpretApiF :: forall a eff. Runtime -> NaturalTransformation (ApiMethodF a) (AppFlow eff)
-interpretApiF (Runtime _ _ apiRunner) (CallAPI apiInteractionF nextF) =
-    runAPIInteraction apiRunner apiInteractionF >>>= (pure <<< nextF)
+type ApiMethodFFlip s a = ApiMethodF a s
 
-runApi :: forall eff. Runtime -> NaturalTransformation API (AppFlow eff)
-runApi runtime = foldFree (\ApiF a -> runExists (interpretApiF runtime) a)
+interpretApiF :: forall s eff. APIRunner -> NaturalTransformation (ApiMethodFFlip s) (AppFlow eff)
+interpretApiF apiRunner (CallAPI apiInteractionF nextF) = runAPIInteraction apiRunner apiInteractionF >>= (pure <<< nextF)
+
+runApi :: forall eff. APIRunner -> NaturalTransformation API (AppFlow eff)
+runApi apiRunner = foldFree (\(ApiF a) -> runExists (interpretApiF apiRunner) a)
