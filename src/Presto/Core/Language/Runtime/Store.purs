@@ -6,7 +6,6 @@ import Control.Monad.Aff.AVar (AVar, putVar, readVar, takeVar)
 import Control.Monad.Free (foldFree)
 import Control.Monad.State.Trans as S
 import Control.Monad.Trans.Class (lift)
-import Data.NaturalTransformation (NaturalTransformation)
 import Data.StrMap (StrMap, insert, lookup)
 import Presto.Core.LocalStorage (getValueFromLocalStore, setValueToLocalStore)
 import Presto.Core.Types.App (AppFlow)
@@ -26,7 +25,7 @@ updateState key value = do
   let st' = insert key value st
   lift $ putVar st' stVar
 
-interpretStoreF :: forall eff. NaturalTransformation StoreF (InterpreterSt eff)
+interpretStoreF :: forall eff. StoreF ~> InterpreterSt eff
 interpretStoreF (Get LocalStore key next) = lift $ getValueFromLocalStore key >>= (pure <<< next)
 interpretStoreF (Set LocalStore key value next) = do
     lift $ setValueToLocalStore key value
@@ -34,5 +33,5 @@ interpretStoreF (Set LocalStore key value next) = do
 interpretStoreF (Get InMemoryStore key next) = readState >>= (lookup key >>> next >>> pure)
 interpretStoreF (Set InMemoryStore key value next) = updateState key value *> pure next
 
-runStoreM :: forall eff. NaturalTransformation StoreM (InterpreterSt eff)
+runStoreM :: forall eff. StoreM ~> InterpreterSt eff
 runStoreM = foldFree interpretStoreF

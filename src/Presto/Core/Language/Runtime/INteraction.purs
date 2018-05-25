@@ -9,7 +9,6 @@ import Control.Monad.Free (foldFree)
 import Data.Either (Either(..))
 import Data.Foreign.Class (decode, encode)
 import Data.Foreign.JSON (parseJSON)
-import Data.NaturalTransformation (NaturalTransformation)
 import Global.Unsafe (unsafeStringify)
 import Presto.Core.Types.API as API
 import Presto.Core.Types.App (AppFlow, UI)
@@ -17,7 +16,7 @@ import Presto.Core.Types.Language.Interaction (ForeignIn(..), ForeignOut(..), In
 
 type UIRunner = forall e. String -> Aff (ui :: UI | e) String
 
-interpretInteractionF :: forall eff. UIRunner -> NaturalTransformation InteractionF (AppFlow eff)
+interpretInteractionF :: forall eff. UIRunner -> InteractionF ~> AppFlow eff
 interpretInteractionF uiRunner (Request fgnIn nextF) = do
     json <- uiRunner $ unsafeStringify fgnIn
     case (runExcept (parseJSON json)) of
@@ -25,12 +24,12 @@ interpretInteractionF uiRunner (Request fgnIn nextF) = do
         Left err -> throwError $ error $ show err
 
 
-runUIInteraction :: forall eff. UIRunner -> NaturalTransformation Interaction (AppFlow eff)
+runUIInteraction :: forall eff. UIRunner -> Interaction ~> AppFlow eff
 runUIInteraction uiRunner = foldFree (interpretInteractionF uiRunner)
 
 type APIRunner = forall e. API.Request -> Aff e String
 
-interpretAPIInteractionF :: forall eff. APIRunner -> NaturalTransformation InteractionF (AppFlow eff)
+interpretAPIInteractionF :: forall eff. APIRunner -> InteractionF ~> AppFlow eff
 interpretAPIInteractionF apiRunner (Request (ForeignIn fgnIn) nextF) = do
     case runExcept $ decode fgnIn of
         -- this error should never happen if the `apiInteract` function is made right
@@ -39,5 +38,5 @@ interpretAPIInteractionF apiRunner (Request (ForeignIn fgnIn) nextF) = do
             str <- apiRunner req
             pure $ nextF $ ForeignOut $ encode str
 
-runAPIInteraction :: forall eff. APIRunner -> NaturalTransformation Interaction (AppFlow eff)
+runAPIInteraction :: forall eff. APIRunner -> Interaction ~> AppFlow eff
 runAPIInteraction apiRunner = foldFree (interpretAPIInteractionF apiRunner)

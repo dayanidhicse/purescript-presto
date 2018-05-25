@@ -6,7 +6,6 @@ import Control.Monad.Aff (error, forkAff, throwError)
 import Control.Monad.Free (foldFree)
 import Control.Monad.Trans.Class (lift)
 import Data.Exists (runExists)
-import Data.NaturalTransformation (NaturalTransformation)
 import Presto.Core.Language.Runtime.Interaction (runUIInteraction, UIRunner)
 import Presto.Core.Language.Runtime.Store (InterpreterSt)
 import Presto.Core.Types.Language.UI (ErrorHandler(..), Gui, GuiF(..), GuiMethodF(..))
@@ -17,7 +16,7 @@ runErrorHandler (ReturnResult res) = pure res
 
 type GuiMethodFF s a = GuiMethodF a s
 
-interpretGuiMethodF :: forall s eff. UIRunner -> NaturalTransformation (GuiMethodFF s) (InterpreterSt eff)
+interpretGuiMethodF :: forall s eff. UIRunner -> GuiMethodFF s ~> InterpreterSt eff
 interpretGuiMethodF uiRunner (RunUI uiInteraction nextF) =
     lift $ runUIInteraction uiRunner uiInteraction >>= (pure <<< nextF)
 interpretGuiMethodF uiRunner (ForkUI uiInteraction next) = do
@@ -30,5 +29,5 @@ interpretGuiMethodF _ (ForkScreen uiFlow nextF) = lift (forkAff uiFlow) *> pure 
 interpretGuiMethodF uiRunner (HandleError flow nextF) =
     foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g) flow >>= runErrorHandler >>= (pure <<< nextF)
 
-runUI :: forall eff. UIRunner -> NaturalTransformation Gui (InterpreterSt eff)
+runUI :: forall eff. UIRunner -> Gui ~> InterpreterSt eff
 runUI uiRunner = foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g)

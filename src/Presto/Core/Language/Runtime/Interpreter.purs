@@ -17,7 +17,6 @@ import Control.Monad.State.Trans as S
 import Control.Monad.Trans.Class (lift)
 import Control.Parallel (parOneOf)
 import Data.Exists (runExists)
-import Data.NaturalTransformation (NaturalTransformation)
 import Data.Tuple (Tuple(..))
 import Presto.Core.Language.Runtime.API (APIRunner)
 import Presto.Core.Language.Runtime.Permission (PermissionRunner(..))
@@ -42,7 +41,7 @@ forkFlow rt flow = do
   pure $ Control resultVar
 
 
-interpret :: forall eff s. Runtime -> NaturalTransformation (FlowMethod s) (InterpreterSt eff)
+interpret :: forall eff s. Runtime -> FlowMethod s ~> InterpreterSt eff
 interpret r (Fork flow nextF) = forkFlow r flow >>= (pure <<< nextF)
 
 interpret _ (DoAff aff nextF) = lift aff >>= (pure <<< nextF)
@@ -60,5 +59,5 @@ interpret rt (OneOf flows nextF) = do
   where
     parFlow st flow = S.runStateT (run rt flow) st
 
-run :: forall eff. Runtime -> NaturalTransformation Flow (InterpreterSt eff)
+run :: forall eff. Runtime -> Flow ~> InterpreterSt eff
 run runtime = foldFree (\(FlowWrapper g) -> runExists (interpret runtime) g)

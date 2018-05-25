@@ -69,5 +69,5 @@ delay :: Milliseconds -> Flow Unit
 delay duration = wrap $ Delay duration unit
 
 -- | Executes a set of actions and returns when the first one is done
---oneOf :: forall m s. IsFlow m => Array (m s) -> Flow s
---oneOf flows = wrap $ OneOf flows id
+oneOf :: forall m s. Array (Flow s) -> Flow s
+oneOf flows = wrap $ OneOf flows id
