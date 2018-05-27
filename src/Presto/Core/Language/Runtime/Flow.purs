@@ -9,9 +9,9 @@ import Control.Monad.Aff.AVar (makeEmptyVar, putVar, readVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Free (foldFree)
 import Control.Parallel (parOneOf)
-import Data.Exists (runExists)
 import Presto.Core.Types.App (AppFlow)
-import Presto.Core.Types.Language.Flow (Control(..), Flow, FlowMethodF(..), FlowWrapper(..), FlowMethod)
+import Presto.Core.Types.Language.Flow (Control(..), Flow, FlowMethod(..), FlowWrapper(..))
+import Presto.Core.Utils.Existing (runExisting)
 
 type AffError e = (Error -> Eff e Unit)
 type AffSuccess s e = (s -> Eff e Unit)
@@ -32,4 +32,4 @@ interpretFlow (Delay duration next) = delay duration *> pure next
 interpretFlow (OneOf flows nextF) = parOneOf (runFlow <$> flows) >>= (nextF >>> pure)
 
 runFlow :: forall eff. Flow ~> AppFlow eff
-runFlow = foldFree (\(FlowWrapper g) -> runExists interpretFlow g)
+runFlow = foldFree (\(FlowWrapper g) -> runExisting interpretFlow g)

@@ -6,13 +6,12 @@ import Control.Monad.Aff (Aff, makeAff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Free (Free, liftF)
 import DOM (DOM)
-import Data.Either (Either(..), either)
-import Data.Exists (Exists, mkExists)
+import Data.Either (Either, either)
 import FRP (FRP)
 import Presto.Core.Types.Language.Interaction (class Interact, Interaction, interact, interactConv)
+import Presto.Core.Utils.Existing (Existing, mkExisting, unExisting)
 import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
 import PrestoDOM.Types.Core (Screen)
-import Unsafe.Coerce (unsafeCoerce)
 
 type UIFlow eff = Aff (frp :: FRP, dom :: DOM | eff)
 type UIResult s = Either Error s
@@ -21,7 +20,7 @@ data ErrorHandler s
   = ThrowError String
   | ReturnResult s
 
-data GuiMethodF a s
+data GuiMethodF s a
     = RunUI (Interaction (UIResult s)) (UIResult s -> a)
     | ForkUI (Interaction (UIResult s)) a
     | InitUIWithScreen (forall eff. UIFlow eff s) (s -> a)
@@ -30,22 +29,24 @@ data GuiMethodF a s
     | ForkScreen (forall eff. UIFlow eff s) a
     | HandleError (Gui (ErrorHandler s)) (s -> a)
 
-newtype GuiF a = GuiF (Exists (GuiMethodF a))
+instance functorGuiMethodF :: Functor (GuiMethodF s) where
+  map f (RunUI g h) = RunUI g (h >>> f)
+  map f (ForkUI g h) = ForkUI g (f h)
+  map f (InitUIWithScreen g h) = InitUIWithScreen g (h >>> f)
+  map f (InitUI g h) = InitUI g (h >>> f)
+  map f (RunScreen g h) = RunScreen g (h >>> f)
+  map f (ForkScreen g h) = ForkScreen g (f h)
+  map f (HandleError g h) = HandleError g (h >>> f)
+
+newtype GuiF a = GuiF (Existing GuiMethodF a)
 
 instance functorGui :: Functor GuiF where
-    map f (GuiF g) = GuiF $ mkExists $ map' f (unsafeCoerce g)
-      where map' f (RunUI g h) = RunUI g (h >>> f)
-            map' f (ForkUI g h) = ForkUI g (f h)
-            map' f (InitUIWithScreen g h) = InitUIWithScreen g (h >>> f)
-            map' f (InitUI g h) = InitUI g (h >>> f)
-            map' f (RunScreen g h) = RunScreen g (h >>> f)
-            map' f (ForkScreen g h) = ForkScreen g (f h)
-            map' f (HandleError g h) = HandleError g (h >>> f)
+    map f (GuiF g) = GuiF $ mkExisting $ map f $ unExisting g
 
 type Gui = Free GuiF
 
-wrap :: forall a s. GuiMethodF a s -> Gui a
-wrap = liftF <<< GuiF <<< mkExists
+wrap :: forall a s. GuiMethodF s a -> Gui a
+wrap = liftF <<< GuiF <<< mkExisting
 
 -- | Converts error to string and throws at runtime or returns result.
 withError :: forall err s. (err -> String) -> Gui (Either err s) -> Gui s

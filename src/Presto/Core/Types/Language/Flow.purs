@@ -2,42 +2,40 @@ module Presto.Core.Types.Language.Flow where
 
 import Prelude
 
-import Control.Monad.Aff (makeAff)
 import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Free (Free, liftF)
-import Data.Either (Either, either)
-import Data.Exists (Exists)
-import Data.Maybe (Maybe)
 import Data.Time.Duration (Milliseconds)
-import Presto.Core.Types.API (class RestEndpoint, ErrorResponse, Headers, RegTokens)
-import Presto.Core.Types.App (AppFlow, UIFlow)
-import Presto.Core.Types.Language.Interaction (class Interact, Interaction, interact, interactConv)
-import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
-import PrestoDOM.Types.Core (Screen)
-import Unsafe.Coerce (unsafeCoerce)
+import Presto.Core.Types.App (AppFlow)
+import Presto.Core.Utils.Existing (Existing, mkExisting, unExisting)
 
 newtype Control s = Control (AVar s)
 
 -- | Algebra of the Flow free language.
-data FlowMethodF a s
+data FlowMethod s a
   = Fork (Flow s) (Control s -> a)
   | DoAff (forall eff. AppFlow eff s) (s -> a)
   | Await (Control s) (s -> a)
   | Delay Milliseconds a
   | OneOf (Array (Flow s)) (s -> a)
 
-type FlowMethod s a = FlowMethodF a s
+instance functorFlowMethodF :: Functor (FlowMethod s) where
+  map f (Fork g h) = Fork g (h >>> f)
+  map f (DoAff g h) = DoAff g (h >>> f)
+  map f (Await g h) = Await g (h >>> f)
+  map f (Delay g h) = Delay g (f h)
+  map f (OneOf g h) = OneOf g (h >>> f)
 
-newtype FlowWrapper a = FlowWrapper (Exists (FlowMethodF a))
+newtype FlowWrapper a = FlowWrapper (Existing FlowMethod a)
+
+instance functorFlowWrapper :: Functor FlowWrapper where
+  map f (FlowWrapper g) = FlowWrapper $ mkExisting $ map f $ unExisting g
 
 -- | Free monadic language for making flows.
 type Flow a = Free FlowWrapper a
 
 -- | FlowWrapper for existential type.
-wrap :: forall a s. FlowMethodF a s -> Flow a
-wrap = liftF <<< FlowWrapper <<< unsafeCoerce
+wrap :: forall a s. FlowMethod s a -> Flow a
+wrap = liftF <<< FlowWrapper <<< mkExisting
 
 -- | Forks a flow and returns a control structure for getting results back (like Future).
 fork :: forall s. Flow s -> Flow (Control s)
@@ -45,7 +43,7 @@ fork flow = wrap $ Fork flow id
 
 -- | Forks a flow and returns a void control structure.
 launch :: Flow Unit -> Flow (Control Unit)
-launch flow = wrap $ Fork flow id
+launch = fork
 
 -- | Runs any Aff as part of the flow
 doAff :: forall s. (forall eff. AppFlow eff s) -> Flow s
@@ -57,7 +55,7 @@ await control = wrap $ Await control id
 
 -- | Awaits a forked flow to be completed.
 await' :: forall s. Control s -> Flow Unit
-await' control = void $ wrap $ Await control id
+await' = void <<< await
 
 -- | Delays computation for a given number of milliseconds.
 delay :: Milliseconds -> Flow Unit
