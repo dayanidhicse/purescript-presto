@@ -11,7 +11,8 @@ import Presto.Core.Types.Language.Flow (Flow, doAff)
 type ApiMethodFFlip s a = ApiMethodF a s
 
 interpretApiF :: forall s. APIRunner -> ApiMethodFFlip s ~> Flow
-interpretApiF apiRunner (CallAPI apiInteractionF nextF) = doAff (runAPIInteraction apiRunner apiInteractionF) >>= (pure <<< nextF)
+interpretApiF apiRunner (CallAPI apiInteractionF nextF) =
+    doAff (runAPIInteraction apiRunner apiInteractionF) >>= (nextF >>> pure)
 
 runApi :: APIRunner -> API ~> Flow
 runApi apiRunner = foldFree (\(ApiF a) -> runExists (interpretApiF apiRunner) a)

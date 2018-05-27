@@ -18,18 +18,15 @@ type GuiMethodFF s a = GuiMethodF a s
 
 interpretGuiMethodF :: forall s. UIRunner -> GuiMethodFF s ~> Flow
 interpretGuiMethodF uiRunner (RunUI uiInteraction nextF) =
-    doAff (runUIInteraction uiRunner uiInteraction) >>= (pure <<< nextF)
-interpretGuiMethodF uiRunner (ForkUI uiInteraction next) = do
-    _ <- fork $ doAff (runUIInteraction uiRunner uiInteraction)
-    pure next
-interpretGuiMethodF _ (InitUIWithScreen uiFlow nextF) = doAff uiFlow >>= (pure <<< nextF)
-interpretGuiMethodF _ (InitUI uiFlow nextF) = doAff uiFlow >>= (pure <<< nextF)
-interpretGuiMethodF _ (RunScreen uiFlow nextF) = doAff uiFlow >>= (pure <<< nextF)
-interpretGuiMethodF _ (ForkScreen uiFlow nextF) = do
-    _ <- fork $ doAff uiFlow
-    pure nextF
+    doAff (runUIInteraction uiRunner uiInteraction) >>= (nextF >>> pure)
+interpretGuiMethodF uiRunner (ForkUI uiInteraction next) =
+    fork (doAff (runUIInteraction uiRunner uiInteraction)) *> pure next
+interpretGuiMethodF _ (InitUIWithScreen uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
+interpretGuiMethodF _ (InitUI uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
+interpretGuiMethodF _ (RunScreen uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
+interpretGuiMethodF _ (ForkScreen uiFlow nextF) = fork (doAff uiFlow) *> pure nextF
 interpretGuiMethodF uiRunner (HandleError flow nextF) =
-    foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g) flow >>= (doAff <<< runErrorHandler) >>= (pure <<< nextF)
+    foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g) flow >>= (doAff <<< runErrorHandler) >>= (nextF >>> pure)
 
 runUI :: UIRunner -> Gui ~> Flow
 runUI uiRunner = foldFree (\(GuiF g) -> runExists (interpretGuiMethodF uiRunner) g)

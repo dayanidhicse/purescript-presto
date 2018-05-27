@@ -25,11 +25,11 @@ forkFlow flow = do
 
 
 interpretFlow :: forall eff s. FlowMethod s ~> AppFlow eff
-interpretFlow (Fork flow nextF) = forkFlow flow >>= (pure <<< nextF)
-interpretFlow (DoAff aff nextF) = aff >>= (pure <<< nextF)
-interpretFlow (Await (Control resultVar) nextF) = readVar resultVar >>= (pure <<< nextF)
+interpretFlow (Fork flow nextF) = forkFlow flow >>= (nextF >>> pure)
+interpretFlow (DoAff aff nextF) = aff >>= (nextF >>> pure)
+interpretFlow (Await (Control resultVar) nextF) = readVar resultVar >>= (nextF >>> pure)
 interpretFlow (Delay duration next) = delay duration *> pure next
-interpretFlow (OneOf flows nextF) = parOneOf (runFlow <$> flows) >>= (pure <<< nextF)
+interpretFlow (OneOf flows nextF) = parOneOf (runFlow <$> flows) >>= (nextF >>> pure)
 
 runFlow :: forall eff. Flow ~> AppFlow eff
 runFlow = foldFree (\(FlowWrapper g) -> runExists interpretFlow g)

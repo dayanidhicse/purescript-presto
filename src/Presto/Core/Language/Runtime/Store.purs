@@ -26,10 +26,8 @@ updateState key value = do
   lift $ putVar st' stVar
 
 interpretStoreF :: forall eff. StoreF ~> InterpreterSt eff
-interpretStoreF (Get LocalStore key next) = lift $ getValueFromLocalStore key >>= (pure <<< next)
-interpretStoreF (Set LocalStore key value next) = do
-    lift $ setValueToLocalStore key value
-    pure next
+interpretStoreF (Get LocalStore key next) = lift $ getValueFromLocalStore key >>= (next >>> pure)
+interpretStoreF (Set LocalStore key value next) = lift $ setValueToLocalStore key value *> pure next
 interpretStoreF (Get InMemoryStore key next) = readState >>= (lookup key >>> next >>> pure)
 interpretStoreF (Set InMemoryStore key value next) = updateState key value *> pure next
 

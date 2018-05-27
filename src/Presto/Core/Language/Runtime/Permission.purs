@@ -14,8 +14,8 @@ type PermissionTakeRunner = forall e. Array Permission -> Aff (storage :: STORAG
 data PermissionRunner = PermissionRunner PermissionCheckRunner PermissionTakeRunner
 
 interpretPermissionF :: PermissionRunner -> PermissionF ~> Flow
-interpretPermissionF (PermissionRunner check _) (CheckPermissions permissions nextF) = doAff (check permissions) >>= (pure <<< nextF)
-interpretPermissionF (PermissionRunner _ take) (TakePermissions permissions nextF) = doAff (take permissions) >>= (pure <<< nextF)
+interpretPermissionF (PermissionRunner check _) (CheckPermissions permissions nextF) = doAff (check permissions) >>= (nextF >>> pure)
+interpretPermissionF (PermissionRunner _ take) (TakePermissions permissions nextF) = doAff (take permissions) >>= (nextF >>> pure)
 
 runPermission :: PermissionRunner -> PermissionM ~> Flow
 runPermission pRunner = foldFree (interpretPermissionF pRunner)
