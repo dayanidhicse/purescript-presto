@@ -1,58 +1,35 @@
 module Presto.Core.Language.Runtime.Flow
-  ( Runtime(..)
-  , run
+  ( runFlow
   ) where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Error, delay, forkAff)
+import Control.Monad.Aff (Error, delay, forkAff)
 import Control.Monad.Aff.AVar (makeEmptyVar, putVar, readVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Free (foldFree)
-import Control.Monad.State.Trans as S
-import Control.Monad.Trans.Class (lift)
 import Control.Parallel (parOneOf)
 import Data.Exists (runExists)
-import Data.Tuple (Tuple(..))
-import Presto.Core.Language.Runtime.Interaction (APIRunner, UIRunner)
-import Presto.Core.Language.Runtime.Permission (PermissionRunner(..))
-import Presto.Core.Language.Runtime.Store (InterpreterSt)
-import Presto.Core.Types.App (STORAGE, UI)
+import Presto.Core.Types.App (AppFlow)
 import Presto.Core.Types.Language.Flow (Control(..), Flow, FlowMethodF(..), FlowWrapper(..), FlowMethod)
-import Presto.Core.Types.Permission (Permission, PermissionResponse, PermissionStatus)
 
 type AffError e = (Error -> Eff e Unit)
 type AffSuccess s e = (s -> Eff e Unit)
 
-data Runtime = Runtime UIRunner PermissionRunner APIRunner
-
 -- TODO: canceller support
-forkFlow :: forall eff a. Runtime -> Flow a -> InterpreterSt eff (Control a)
-forkFlow rt flow = do
-  st <- S.get
-  resultVar <- lift makeEmptyVar
-  let m = S.evalStateT (run rt flow) st
-  _ <- lift $ forkAff $ m >>= flip putVar resultVar
+forkFlow :: forall eff a. Flow a -> AppFlow eff (Control a)
+forkFlow flow = do
+  resultVar <- makeEmptyVar
+  _ <- forkAff $ runFlow flow >>= flip putVar resultVar
   pure $ Control resultVar
 
 
-interpret :: forall eff s. Runtime -> FlowMethod s ~> InterpreterSt eff
-interpret r (Fork flow nextF) = forkFlow r flow >>= (pure <<< nextF)
+interpretFlow :: forall eff s. FlowMethod s ~> AppFlow eff
+interpretFlow (Fork flow nextF) = forkFlow flow >>= (pure <<< nextF)
+interpretFlow (DoAff aff nextF) = aff >>= (pure <<< nextF)
+interpretFlow (Await (Control resultVar) nextF) = readVar resultVar >>= (pure <<< nextF)
+interpretFlow (Delay duration next) = delay duration *> pure next
+interpretFlow (OneOf flows nextF) = parOneOf (runFlow <$> flows) >>= (pure <<< nextF)
 
-interpret _ (DoAff aff nextF) = lift aff >>= (pure <<< nextF)
-
-interpret _ (Await (Control resultVar) nextF) = do
-  lift (readVar resultVar) >>= (pure <<< nextF)
-
-interpret _ (Delay duration next) = lift (delay duration) *> pure next
-
-interpret rt (OneOf flows nextF) = do
-  st <- S.get
-  Tuple a s <- lift $ parOneOf (parFlow st <$> flows)
-  S.put s
-  pure $ nextF a
-  where
-    parFlow st flow = S.runStateT (run rt flow) st
-
-run :: forall eff. Runtime -> Flow ~> InterpreterSt eff
-run runtime = foldFree (\(FlowWrapper g) -> runExists (interpret runtime) g)
+runFlow :: forall eff. Flow ~> AppFlow eff
+runFlow = foldFree (\(FlowWrapper g) -> runExists interpretFlow g)
