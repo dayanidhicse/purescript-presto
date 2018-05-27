@@ -18,11 +18,6 @@ import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
 import PrestoDOM.Types.Core (Screen)
 import Unsafe.Coerce (unsafeCoerce)
 
-data Authorization = RegistrationTokens RegTokens
-
-class Monad m <= IsFlow m where
-  runFlow :: forall e a. m a -> Eff e a
-
 newtype Control s = Control (AVar s)
 
 -- | Algebra of the Flow free language.

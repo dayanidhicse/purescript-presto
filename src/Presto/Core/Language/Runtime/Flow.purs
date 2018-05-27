@@ -1,4 +1,4 @@
-module Presto.Core.Language.Runtime.Interpreter
+module Presto.Core.Language.Runtime.Flow
   ( Runtime(..)
   , run
   ) where
