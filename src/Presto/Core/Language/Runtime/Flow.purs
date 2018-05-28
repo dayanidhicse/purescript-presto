@@ -4,17 +4,13 @@ module Presto.Core.Language.Runtime.Flow
 
 import Prelude
 
-import Control.Monad.Aff (Error, delay, forkAff)
+import Control.Monad.Aff (delay, forkAff)
 import Control.Monad.Aff.AVar (makeEmptyVar, putVar, readVar)
-import Control.Monad.Eff (Eff)
 import Control.Monad.Free (foldFree)
 import Control.Parallel (parOneOf)
 import Presto.Core.Types.App (AppFlow)
 import Presto.Core.Types.Language.Flow (Control(..), Flow, FlowMethod(..), FlowWrapper(..))
 import Presto.Core.Utils.Existing (runExisting)
-
-type AffError e = (Error -> Eff e Unit)
-type AffSuccess s e = (s -> Eff e Unit)
 
 -- TODO: canceller support
 forkFlow :: forall eff a. Flow a -> AppFlow eff (Control a)
