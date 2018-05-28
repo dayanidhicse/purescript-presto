@@ -1,5 +1,7 @@
 module Presto.Core.Utils.Existing where
 
+import Prelude
+
 import Unsafe.Coerce (unsafeCoerce)
 
 
@@ -13,4 +15,4 @@ unExisting :: forall f a b. Existing f b -> f a b
 unExisting = unsafeCoerce
 
 runExisting :: forall f b r. (forall a. f a b -> r) -> Existing f b -> r
-runExisting = unsafeCoerce
+runExisting f = f <<< unExisting
