@@ -4,8 +4,8 @@ import Prelude
 
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse, traverse_)
-import Presto.Core.Types.Language.Flow (Flow, Control, load, save, launch, fork)
-import Presto.Core.Types.Language.Storage (class Serializable, Key)
+import Presto.Core.Types.Language.Flow (Flow, Control, launch, fork)
+--import Presto.Core.Types.Language.Storage (class Serializable, Key)
 
 orRun :: forall m a. Monad m => m (Maybe a) -> m a -> m a
 orRun value flow = do
@@ -37,6 +37,7 @@ until pred flow = do
 
 infixl 5 orElse as <|>
 
+{-
 onFirstRun :: forall s. Serializable s => Key -> Flow s -> Flow s
 onFirstRun key flow = do
   mbRes <- load key
@@ -46,6 +47,7 @@ onFirstRun key flow = do
       value <- flow
       save key value
       pure value
+-}
 
 inParallel :: Array (Flow Unit) -> Flow (Array (Control Unit))
 inParallel = traverse fork

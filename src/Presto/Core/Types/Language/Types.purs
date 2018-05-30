@@ -8,8 +8,8 @@ import Data.Functor.Coproduct (Coproduct(..))
 
 type Interpreter f m = f ~> m
 
-interpretTrans :: forall f m t. Monad m => MonadTrans t => Interpreter f m -> Interpreter f (t m)
-interpretTrans interpret = lift <<< interpret
+liftInterpreter :: forall f m t. Monad m => MonadTrans t => (f ~> m) -> f ~> t m
+liftInterpreter r = lift <<< r
 
-interpretCoproduct :: forall f g m. Interpreter f m -> Interpreter g m -> Interpreter (Coproduct f g) m
-interpretCoproduct interpretF interpretG (Coproduct e) = either interpretF interpretG e
+interpretCoproduct :: forall f g m. (f ~> m) -> (g ~> m) -> (Coproduct f g) ~> m
+interpretCoproduct f g (Coproduct e) = either f g e

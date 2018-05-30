@@ -4,6 +4,7 @@ import Prelude
 
 import Control.Monad.Aff (Aff, makeAff)
 import Control.Monad.Eff.Exception (Error)
+import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Free (Free, liftF)
 import DOM (DOM)
 import Data.Either (Either, either)
@@ -13,7 +14,7 @@ import Presto.Core.Utils.Existing (Existing, mkExisting, unExisting)
 import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
 import PrestoDOM.Types.Core (Screen)
 
-type UIFlow eff = Aff (frp :: FRP, dom :: DOM | eff)
+type UIFlow eff = Aff (frp :: FRP, dom :: DOM, ref :: REF | eff)
 type UIResult s = Either Error s
 
 data ErrorHandler s
