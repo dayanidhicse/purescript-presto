@@ -39,17 +39,20 @@ forkFlow flow = do
   _ <- lift $ forkAff $ m >>= flip putVar resultVar
   pure $ Control resultVar
 
+parFlows :: forall eff a. Array (Flow a) -> InterpreterSt eff a
+parFlows flows = do
+  st <- S.get
+  let parFlow state flow = S.runStateT (runFlow flow) state
+  Tuple a s <- lift $ parOneOf (parFlow st <$> flows)
+  S.put s
+  pure a
 
 interpretFlow :: forall eff s. FlowMethod s ~> InterpreterSt eff
 interpretFlow (Fork flow nextF) = forkFlow flow >>= (nextF >>> pure)
 interpretFlow (DoAff aff nextF) = lift aff >>= (nextF >>> pure)
 interpretFlow (Await (Control resultVar) nextF) = lift (readVar resultVar) >>= (nextF >>> pure)
 interpretFlow (Delay duration next) = lift (delay duration) *> pure next
-interpretFlow (OneOf flows nextF) = do
-  s <- S.get
-  let parFlow st flow = S.runStateT (runFlow flow) s
-  Tuple a s <- lift $ parOneOf (parFlow s <$> flows)
-  pure $ nextF a
+interpretFlow (OneOf flows nextF) = parFlows flows >>= (nextF >>> pure)
 interpretFlow (Set k v next) = updateState k v *> pure next
 interpretFlow (Get k nextF) = readState >>= (lookup k >>> nextF >>> pure)
 
