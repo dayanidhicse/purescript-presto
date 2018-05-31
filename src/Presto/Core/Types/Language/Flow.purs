@@ -4,8 +4,10 @@ import Prelude
 
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Free (Free, liftF)
+import Data.Maybe (Maybe)
 import Data.Time.Duration (Milliseconds)
 import Presto.Core.Types.App (AppFlow)
+import Presto.Core.Types.Language.Storage (Key)
 import Presto.Core.Utils.Existing (Existing, mkExisting, unExisting)
 
 newtype Control s = Control (AVar s)
@@ -17,6 +19,8 @@ data FlowMethod s a
   | Await (Control s) (s -> a)
   | Delay Milliseconds a
   | OneOf (Array (Flow s)) (s -> a)
+  | Set Key String a
+  | Get Key (Maybe String -> a)
 
 instance functorFlowMethodF :: Functor (FlowMethod s) where
   map f (Fork g h) = Fork g (h >>> f)
@@ -24,6 +28,8 @@ instance functorFlowMethodF :: Functor (FlowMethod s) where
   map f (Await g h) = Await g (h >>> f)
   map f (Delay g h) = Delay g (f h)
   map f (OneOf g h) = OneOf g (h >>> f)
+  map f (Set k s h) = Set k s (f h)
+  map f (Get k h)   = Get k (h >>> f)
 
 newtype FlowWrapper a = FlowWrapper (Existing FlowMethod a)
 
@@ -64,3 +70,9 @@ delay duration = wrap $ Delay duration unit
 -- | Executes a set of actions and returns when the first one is done
 oneOf :: forall s. Array (Flow s) -> Flow s
 oneOf flows = wrap $ OneOf flows id
+
+set :: Key -> String -> Flow Unit
+set k v = wrap $ Set k v unit
+
+get :: Key -> Flow (Maybe String)
+get k = wrap $ Get k id
