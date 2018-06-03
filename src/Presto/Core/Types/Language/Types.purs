@@ -1,15 +1,15 @@
 module Presto.Core.Types.Language.Types where
 
-import Prelude
-
-import Control.Monad.Trans.Class (class MonadTrans, lift)
+import Control.Monad.Free (Free, foldFree)
+import Control.Monad.Rec.Class (class MonadRec)
 import Data.Either (either)
 import Data.Functor.Coproduct (Coproduct(..))
 
-type Interpreter f m = f ~> m
+class Run f m where
+    runAlgebra :: forall a. f a -> m a
 
-liftInterpreter :: forall f m t. Monad m => MonadTrans t => (f ~> m) -> f ~> t m
-liftInterpreter r = lift <<< r
+instance runCoproduct :: (Run f m, Run g m) => Run (Coproduct f g) m where
+    runAlgebra (Coproduct e) = either runAlgebra runAlgebra e
 
-interpretCoproduct :: forall f g m. (f ~> m) -> (g ~> m) -> (Coproduct f g) ~> m
-interpretCoproduct f g (Coproduct e) = either f g e
+run :: forall f m a. Run f m => MonadRec m => Free f a -> m a
+run = foldFree runAlgebra
