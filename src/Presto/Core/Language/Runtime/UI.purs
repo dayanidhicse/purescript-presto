@@ -23,8 +23,7 @@ interpretGuiMethodF _ (InitUIWithScreen uiFlow nextF) = doAff uiFlow >>= (nextF 
 interpretGuiMethodF _ (InitUI uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
 interpretGuiMethodF _ (RunScreen uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
 interpretGuiMethodF _ (ForkScreen uiFlow nextF) = fork (doAff uiFlow) *> pure nextF
-interpretGuiMethodF uiRunner (HandleError flow nextF) =
-    foldFree (\(GuiF g) -> runExisting (interpretGuiMethodF uiRunner) g) flow >>= (doAff <<< runErrorHandler) >>= (nextF >>> pure)
+interpretGuiMethodF uiRunner (HandleError err nextF) = doAff (runErrorHandler err) >>= (nextF >>> pure)
 
 runUI :: UIRunner -> Gui ~> Flow
 runUI uiRunner = foldFree (\(GuiF g) -> runExisting (interpretGuiMethodF uiRunner) g)
