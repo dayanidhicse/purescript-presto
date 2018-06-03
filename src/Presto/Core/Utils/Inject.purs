@@ -1,4 +1,4 @@
-module Presto.Core.Types.Language.Inject where
+module Presto.Core.Utils.Inject where
 
 import Prelude
 
