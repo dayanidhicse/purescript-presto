@@ -4,7 +4,11 @@ import Prelude
 
 import Control.Monad.Free (Free)
 import Data.Maybe (Maybe)
+import Presto.Core.LocalStorage (getValueFromLocalStore, setValueToLocalStore)
+import Presto.Core.Types.Language.Flow (Flow, doAff)
+import Presto.Core.Types.Language.Flow as F
 import Presto.Core.Types.Language.Storage (Key, class Serializable, serialize, deserialize)
+import Presto.Core.Types.Language.Types (class Run)
 import Presto.Core.Utils.Inject (class Inject, inject)
 
 data Store = LocalStore | InMemoryStore
@@ -15,6 +19,12 @@ data StoreF a = Get Store Key (Maybe String -> a)
 instance functorStoreF :: Functor StoreF where
   map f (Get s k g) = Get s k (g >>> f)
   map f (Set s k v g) = Set s k v (f g)
+
+instance runStoreF :: Run StoreF Flow where
+  runAlgebra (Get LocalStore key next) = doAff (getValueFromLocalStore key) >>= (next >>> pure)
+  runAlgebra (Set LocalStore key value next) = doAff (setValueToLocalStore key value) *> pure next
+  runAlgebra (Get InMemoryStore key next) = F.get key >>= (next >>> pure)
+  runAlgebra (Set InMemoryStore key value next) = F.set key value *> pure next
 
 -- | Gets some string from state by key
 getS :: forall f. Inject StoreF f => Key -> Free f (Maybe String)

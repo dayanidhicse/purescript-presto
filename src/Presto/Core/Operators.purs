@@ -2,12 +2,13 @@ module Presto.Core.Operators where
 
 import Prelude
 
+import Control.Monad.Free (Free)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse, traverse_)
-import Presto.Core.Language.Runtime.Store (runStoreM)
 import Presto.Core.Types.Language.Flow (Flow, Control, launch, fork)
 import Presto.Core.Types.Language.Storage (class Serializable, Key)
-import Presto.Core.Types.Language.Store (load, save)
+import Presto.Core.Types.Language.Store (StoreF, load, save)
+import Presto.Core.Types.Language.Types (run)
 
 orRun :: forall m a. Monad m => m (Maybe a) -> m a -> m a
 orRun value flow = do
@@ -41,12 +42,16 @@ infixl 5 orElse as <|>
 
 onFirstRun :: forall s. Serializable s => Key -> Flow s -> Flow s
 onFirstRun key flow = do
-  mbRes <- runStoreM $ load key
+  let loadVal :: Free StoreF (Maybe s)
+      loadVal = load key
+      saveVal :: s -> Free StoreF Unit
+      saveVal v = save key v
+  mbRes <- run loadVal
   case mbRes of
     Just value -> pure value
     Nothing -> do
       value <- flow
-      runStoreM $ save key value
+      run $ saveVal value
       pure value
 
 inParallel :: Array (Flow Unit) -> Flow (Array (Control Unit))

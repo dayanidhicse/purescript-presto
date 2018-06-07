@@ -5,9 +5,12 @@ import Prelude
 import Control.Monad.Free (Free)
 import Data.Either (Either)
 import Data.Foreign.Class (class Decode, class Encode)
+import Presto.Core.Language.Runtime.Interaction (runAPIInteraction)
 import Presto.Core.Types.API (class RestEndpoint, ErrorResponse, Headers)
 import Presto.Core.Types.Language.APIInteract (apiInteract)
+import Presto.Core.Types.Language.Flow (Flow, apiFlow)
 import Presto.Core.Types.Language.Interaction (Interaction)
+import Presto.Core.Types.Language.Types (class Run)
 import Presto.Core.Utils.Existing (Existing, mkExisting, unExisting)
 import Presto.Core.Utils.Inject (class Inject, inject)
 
@@ -23,6 +26,11 @@ newtype ApiF a = ApiF (Existing ApiMethod a)
 instance functorApiF :: Functor ApiF where
   map f (ApiF g) = ApiF $ mkExisting $ f <$> unExisting g
 
+instance runApiF :: Run ApiF Flow where
+  runAlgebra (ApiF e) = runAlgebra' $ unExisting e
+    where runAlgebra' (CallAPI apiInteractionF nextF) = apiFlow (\apiRunner -> runAPIInteraction apiRunner apiInteractionF) >>= (nextF >>> pure)
+
+  
 -- | Call API being authorized.
 callAPI :: forall a b f. Inject ApiF f => Encode a => Decode b => RestEndpoint a b
   => Headers -> a -> Free f (APIResult b)

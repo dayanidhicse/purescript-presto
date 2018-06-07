@@ -2,14 +2,18 @@ module Presto.Core.Types.Language.UI where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, makeAff)
+import Control.Monad.Aff (Aff, error, makeAff, throwError)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Free (Free)
 import DOM (DOM)
 import Data.Either (Either, either)
 import FRP (FRP)
+import Presto.Core.Language.Runtime.Interaction (runUIInteraction)
+import Presto.Core.Types.App (AppFlow)
+import Presto.Core.Types.Language.Flow (Flow, doAff, fork, uiFlow)
 import Presto.Core.Types.Language.Interaction (class Interact, Interaction, interact, interactConv)
+import Presto.Core.Types.Language.Types (class Run)
 import Presto.Core.Utils.Existing (Existing, mkExisting, unExisting)
 import Presto.Core.Utils.Inject (class Inject, inject)
 import PrestoDOM.Core (runScreen, initUI, initUIWithScreen) as PrestoDOM
@@ -44,6 +48,22 @@ newtype GuiF a = GuiF (Existing GuiMethodF a)
 
 instance functorGui :: Functor GuiF where
     map f (GuiF g) = GuiF $ mkExisting $ map f $ unExisting g
+
+instance runGuiF :: Run GuiF Flow where
+  runAlgebra (GuiF e) = runAlgebra' $ unExisting e
+    where runAlgebra' (RunUI uiInteraction nextF) =
+              uiFlow (\uiRunner -> runUIInteraction uiRunner uiInteraction) >>= (nextF >>> pure)
+          runAlgebra' (ForkUI uiInteraction next) =
+              fork (uiFlow (\uiRunner -> runUIInteraction uiRunner uiInteraction)) *> pure next
+          runAlgebra' (InitUIWithScreen uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
+          runAlgebra' (InitUI uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
+          runAlgebra' (RunScreen uiFlow nextF) = doAff uiFlow >>= (nextF >>> pure)
+          runAlgebra' (ForkScreen uiFlow nextF) = fork (doAff uiFlow) *> pure nextF
+          runAlgebra' (HandleError err nextF) = doAff (runErrorHandler err) >>= (nextF >>> pure)
+
+runErrorHandler :: forall eff s. ErrorHandler s -> AppFlow eff s
+runErrorHandler (ThrowError msg) = throwError $ error msg
+runErrorHandler (ReturnResult res) = pure res
 
 wrap :: forall a s f. Inject GuiF f => GuiMethodF s a -> Free f a
 wrap = inject <<< GuiF <<< mkExisting
