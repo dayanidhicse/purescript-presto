@@ -6,6 +6,7 @@ import Control.Monad.Aff (Aff, makeAff, nonCanceler)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Except (runExcept, throwError)
+import Control.Monad.Free (Free)
 import Control.Monad.Loops (allM)
 import Data.Array (zip)
 import Data.Either (Either(..))
@@ -15,8 +16,9 @@ import Data.Function.Uncurried (Fn3, runFn3)
 import Data.List (fromFoldable)
 import Data.Tuple (Tuple(..))
 import Presto.Core.Types.App (STORAGE)
-import Presto.Core.Types.Language.Flow (Flow, checkPermissions, takePermissions)
+import Presto.Core.Types.Language.Permission (PermissionF, checkPermissions, takePermissions)
 import Presto.Core.Types.Permission (Permission(..), PermissionResponse, PermissionStatus(..))
+import Presto.Core.Utils.Inject (class Inject)
 
 foreign import getPermissionStatus' :: forall e. Fn3 (Error -> EffStorage e Unit) (String -> EffStorage e Unit) String (EffStorage e Unit)
 foreign import requestPermission' :: forall e. Fn3 (Error -> EffStorage e Unit) (String -> EffStorage e Unit) String (EffStorage e Unit)
@@ -33,20 +35,20 @@ toAndroidPermission PermissionReadStorage = "android.permission.READ_EXTERNAL_ST
 allPermissionGranted :: Array PermissionResponse -> Boolean
 allPermissionGranted = all (\(Tuple _ status) -> status == PermissionGranted)
 
-getStoragePermission :: Flow Boolean
+getStoragePermission :: forall f. Inject PermissionF f => Free f Boolean
 getStoragePermission =
   ifM (storageGranted) (pure true) (askForStorage)
   where
-    storageGranted :: Flow Boolean
+    storageGranted :: Free f Boolean
     storageGranted = do
     	 status <- checkPermissions [PermissionWriteStorage]
     	 case status of
     	 	PermissionGranted -> pure true
     		_ -> pure false
-    askForStorage :: Flow Boolean
+    askForStorage :: Free f Boolean
     askForStorage = pure <<< allPermissionGranted =<< takePermissions [PermissionWriteStorage]
 
-storagePermissionGranted :: Flow Boolean
+storagePermissionGranted :: forall f. Inject PermissionF f => Free f Boolean
 storagePermissionGranted = do
 	 status <- checkPermissions [PermissionWriteStorage]
 	 case status of

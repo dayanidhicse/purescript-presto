@@ -1,19 +1,19 @@
 module UI.Flow where
 
-import Prelude (bind, pure)
 import Engineering.Helpers.Commons (runUI')
-import Engineering.Types.App (Flow,liftLeft)
+import Engineering.Types.App (AppFlow, liftLeft)
+import Prelude (bind, pure)
 import Product.Types (Operator, MobileNumber, Amount, BillPayFailure(..), BillPayStatus)
 import UI.Types (AskAmountScreen(..), AskAmountScreenAction(..), AskMobileNumberScreen(..), AskMobileNumberScreenAction(..), ChooseOperatorScreen(..), ChooseOperatorScreenAction(..), SplashScreen(..), SplashScreenAction(..), StatusScreen(..), StatusScreenAction(..))
 
 
-splashScreen :: Flow BillPayFailure SplashScreenAction
+splashScreen :: AppFlow BillPayFailure SplashScreenAction
 splashScreen = do
 	action <- runUI' SplashScreen
 	case action of
 		SplashScreenRendered -> pure SplashScreenRendered
 
-chooseOperator :: Array Operator -> Flow BillPayFailure Operator
+chooseOperator :: Array Operator -> AppFlow BillPayFailure Operator
 chooseOperator operators = do
 	action <- runUI' (ChooseOperatorScreen operators)
 	case action of 
@@ -21,14 +21,14 @@ chooseOperator operators = do
 		ChooseOperatorScreenAbort -> liftLeft UserAbort
 	
 
-askMobileNumber :: Flow BillPayFailure MobileNumber
+askMobileNumber :: AppFlow BillPayFailure MobileNumber
 askMobileNumber = do
 	action <- runUI' AskMobileNumberScreen
 	case action of
 		SubmitMobileNumber mobileNumber -> pure mobileNumber
 		AskMobileNumberScreenAbort -> liftLeft UserAbort
 
-askAmount :: Flow BillPayFailure Amount
+askAmount :: AppFlow BillPayFailure Amount
 askAmount = do
 	action <- runUI' AskAmountScreen
 	case action of
@@ -36,7 +36,7 @@ askAmount = do
 		AskAmountScreenAbort -> liftLeft UserAbort
 
 
-billPayStatus :: MobileNumber -> Amount -> BillPayStatus -> Flow BillPayFailure StatusScreenAction
+billPayStatus :: MobileNumber -> Amount -> BillPayStatus -> AppFlow BillPayFailure StatusScreenAction
 billPayStatus mobileNumber amount payStatus = do
 	action <- runUI' (StatusScreen mobileNumber amount payStatus)
 	case action of

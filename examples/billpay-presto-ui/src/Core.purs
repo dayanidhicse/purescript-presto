@@ -6,6 +6,7 @@ import Control.Monad.Aff (launchAff_, makeAff, nonCanceler)
 import Control.Monad.Aff.AVar (makeVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Except.Trans (runExceptT)
+import Control.Monad.Free (Free)
 import Control.Monad.State.Trans as S
 import Data.Either (Either(..))
 import Data.Function.Uncurried (runFn2)
@@ -13,14 +14,14 @@ import Data.StrMap (empty)
 import Engineering.Helpers.Commons (callAPI', mkNativeRequest, showUI')
 import Engineering.OS.Permission (checkIfPermissionsGranted, requestPermissions)
 import Engineering.Types.App (AppEffects)
-import Presto.Core.Flow (APIRunner, Flow, PermissionCheckRunner, PermissionRunner(..), PermissionTakeRunner, Runtime(..), UIRunner, run, forkUI)
+import Presto.Core.Flow (APIRunner, Flow, GuiF, PermissionCheckRunner, PermissionRunner(..), PermissionTakeRunner, Runtime(..), UIRunner, forkUI, run, runFlow)
 import Product.BillPay (billPayFlow)
 import UI.Types (InitScreen(..))
 
-main :: Eff (AppEffects) Unit
+main :: Eff AppEffects Unit
 main = do
   let runtime = Runtime uiRunner permissionRunner apiRunner
-  let freeFlow = S.evalStateT (run runtime appFlow)
+  let freeFlow = S.evalStateT (runFlow runtime appFlow)
   launchAff_ (makeVar empty >>= freeFlow)
   where
     uiRunner :: UIRunner
@@ -46,10 +47,10 @@ mainFlow = do
     Right a -> pure unit
     Left a -> mainFlow
 
-initializeUI :: Flow Unit
+initializeUI :: Free GuiF Unit
 initializeUI = forkUI InitScreen *> pure unit
 
 appFlow :: Flow Unit
 appFlow = do
-  initializeUI
+  run initializeUI
   mainFlow
