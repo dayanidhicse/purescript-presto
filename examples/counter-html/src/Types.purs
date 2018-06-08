@@ -7,6 +7,9 @@ import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION, Error)
+import Control.Monad.Eff.Ref (REF)
+import DOM (DOM)
+import FRP (FRP)
 import Presto.Core.Types.API (URL)
 import Presto.Core.Types.App (LOCAL_STORAGE, NETWORK, STORAGE, UI)
 
@@ -19,16 +22,7 @@ type AffError e = (Error -> Eff e Unit)
 type AffSuccess s e = (s -> Eff e Unit)
 type NativeHeaders = Array NativeHeader
 
-type AppEffects = (
-    avar :: AVAR
-  , exception :: EXCEPTION
-  , exception :: EXCEPTION
-  , ui :: UI
-  , storage :: STORAGE
-  , ls :: LOCAL_STORAGE
-  , console :: CONSOLE
-  , network :: NETWORK
-  , timer :: TIMER)
+type AppEffects = (avar :: AVAR, frp :: FRP, dom :: DOM, ref :: REF, ui :: UI, storage :: STORAGE, ls :: LOCAL_STORAGE, exception :: EXCEPTION, network :: NETWORK, console :: CONSOLE)
 
 newtype NativeRequest = NativeRequest
  { method :: String

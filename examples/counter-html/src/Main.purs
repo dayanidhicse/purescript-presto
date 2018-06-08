@@ -6,6 +6,7 @@ import Control.Monad.Aff (Aff, launchAff_, makeAff, nonCanceler)
 import Control.Monad.Aff.AVar (makeVar)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Exception (Error)
+import Control.Monad.Free (Free)
 import Control.Monad.State.Trans as S
 import Data.Either (Either(..))
 import Data.Foreign.Class (class Encode, class Decode)
@@ -13,9 +14,8 @@ import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
 import Data.Function.Uncurried (Fn2, runFn2)
 import Data.Generic.Rep (class Generic)
 import Data.StrMap (empty)
-import Presto.Core.Flow (class Interact, APIRunner, PermissionRunner(PermissionRunner), Runtime(Runtime), UIRunner, defaultInteract, run, runUI)
+import Presto.Core.Flow (class Inject, class Interact, APIRunner, GuiF, PermissionRunner(PermissionRunner), Runtime(Runtime), UIRunner, defaultInteract, run, runFlow, runUI)
 import Presto.Core.Types.App (STORAGE, UI)
-import Presto.Core.Types.Language.Flow (Flow)
 import Presto.Core.Types.Permission (Permission, PermissionResponse, PermissionStatus(PermissionGranted))
 import Types (AppEffects)
 
@@ -23,19 +23,18 @@ import Types (AppEffects)
 foreign import showUI' :: forall e. Fn2 (String -> Eff (ui :: UI | e) Unit) String (Eff (ui :: UI | e) Unit)
 
 -- Presents UI to user, waits to action and recurse.
-count :: Int -> Flow Unit
+count :: forall f. Inject GuiF f => Int -> Free f Unit
 count val = do
   Increment <- runUI $ CounterScreen val
   count $ val + 1
 
-appFlow :: Flow Unit
-appFlow = do
-  count 0 *> pure unit
+appFlow :: Free GuiF Unit
+appFlow = count 0 *> pure unit
 
 launchApp :: Eff (AppEffects) Unit
 launchApp = do
  let runtime = Runtime uiRunner permissionRunner apiRunner
- let freeFlow = S.evalStateT (run runtime appFlow)
+ let freeFlow = S.evalStateT (runFlow runtime $ run appFlow)
  launchAff_ (makeVar empty >>= freeFlow)
 
  where
