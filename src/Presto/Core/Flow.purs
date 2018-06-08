@@ -1,4 +1,5 @@
-module Presto.Core.Flow ( module Presto.Core.Language.Runtime.Flow
+module Presto.Core.Flow ( module Presto.Core.Types.Language.Types
+                        , module Presto.Core.Language.Runtime.Flow
                         , module Presto.Core.Language.Runtime.Interaction
                         , module Presto.Core.Types.Language.Flow
                         , module Presto.Core.Types.Language.API
@@ -9,6 +10,7 @@ module Presto.Core.Flow ( module Presto.Core.Language.Runtime.Flow
                         , module Presto.Core.Types.Language.Storage
                         ) where
 
+import Presto.Core.Types.Language.Types (class Run, run)
 import Presto.Core.Language.Runtime.Flow (runFlow)
 import Presto.Core.Language.Runtime.Interaction (APIRunner, UIRunner)
 import Presto.Core.Types.Language.API (APIResult, ApiF, callAPI)
