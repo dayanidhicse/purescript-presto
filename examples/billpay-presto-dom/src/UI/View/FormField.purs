@@ -12,7 +12,7 @@ import PrestoDOM.Events (onChange)
 import PrestoDOM.Types.Core (Component, PrestoDOM)
 import Controller.FormField(Action(..), State, eval, initialState)
 
-component :: forall i eff. Component Action State eff
+component :: forall eff. Component Action State eff
 component =
   {
     initialState : initialState "Label"
@@ -20,7 +20,7 @@ component =
   , eval
   }
 
-view :: forall i w eff. (Action -> Eff (frp :: FRP | eff) Unit) -> State -> PrestoDOM Action w
+view :: forall w eff. (Action -> Eff (frp :: FRP | eff) Unit) -> State -> PrestoDOM Action w
 view push state =
   linearLayout
     [ height $ V 150

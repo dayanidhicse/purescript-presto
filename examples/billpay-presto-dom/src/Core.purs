@@ -13,13 +13,13 @@ import Data.StrMap (empty)
 import Engineering.Helpers.Commons (callAPI', mkNativeRequest, showUI')
 import Engineering.OS.Permission (checkIfPermissionsGranted, requestPermissions)
 import Engineering.Types.App (AppEffects, CancelerEffects)
-import Presto.Core.Flow (APIRunner, Flow, PermissionCheckRunner, PermissionRunner(..), PermissionTakeRunner, Runtime(..), UIRunner, run, forkUI, runScreen)
+import Presto.Core.Flow (APIRunner, PermissionCheckRunner, PermissionRunner(..), PermissionTakeRunner, Runtime(..), UIRunner, forkUI, run, runFlow, runScreen)
 import View.LoginForm (screen) as LoginForm
 
 main :: Eff (AppEffects) (Canceler (CancelerEffects))
 main = do
   let runtime = Runtime uiRunner permissionRunner apiRunner
-  let freeFlow = S.evalStateT (run runtime appFlow)
+  let freeFlow = S.evalStateT (runFlow runtime $ run appFlow)
   launchAff (makeVar' empty >>= freeFlow)
   where
     uiRunner :: UIRunner
@@ -37,7 +37,7 @@ main = do
     apiRunner :: APIRunner
     apiRunner request = makeAff (\err sc -> callAPI' err sc (mkNativeRequest request))
 
-appFlow :: Flow Unit
+appFlow :: Free GuiF Unit
 appFlow = do
   result <- runScreen LoginForm.screen
   pure unit

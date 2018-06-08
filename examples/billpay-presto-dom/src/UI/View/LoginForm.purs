@@ -9,7 +9,7 @@ import PrestoDOM.Elements.Elements
 import PrestoDOM.Properties
 import PrestoDOM.Types.DomAttributes
 import PrestoDOM.Events (onChange, onClick)
-import PrestoDOM.Types.Core (Component, PrestoDOM, Screen)
+import PrestoDOM.Types.Core (PrestoDOM, Screen)
 import PrestoDOM.Core (mapDom)
 import Controller.LoginForm(Action(..), State, eval, initialState)
 import View.FormField as FormField
