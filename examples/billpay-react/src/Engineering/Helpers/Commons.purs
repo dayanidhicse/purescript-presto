@@ -5,10 +5,11 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Except.Trans (ExceptT(..))
+import Control.Monad.Free (Free)
 import Data.Either (Either(..))
 import Data.Function.Uncurried (Fn2)
-import Engineering.Types.App as App
-import Presto.Core.Flow (runUI)
+import Engineering.Types.App (AppFlow)
+import Presto.Core.Flow (GuiF, run, runUI)
 import Presto.Core.Types.API (Header(..), Headers(..), Request(..), URL)
 import Presto.Core.Types.App (UI)
 import Presto.Core.Types.Language.Interaction (class Interact)
@@ -42,6 +43,8 @@ mkNativeHeader :: Header -> NativeHeader
 mkNativeHeader (Header field val) = { field: field, value: val}
 
 
-runUI' :: forall a b e. Interact Error a b => a -> App.Flow e b
-runUI' a = ExceptT (Right <$> runUI a)
+runUI' :: forall a b e. Interact Error a b => a -> AppFlow e b
+runUI' a = ExceptT (Right <$> run uif)
+  where uif :: Free GuiF b
+        uif = runUI a
 

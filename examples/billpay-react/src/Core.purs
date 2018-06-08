@@ -12,7 +12,7 @@ import Data.Function.Uncurried (runFn2)
 import Data.StrMap (empty)
 import Engineering.Helpers.Commons (callAPI', mkNativeRequest, showUI')
 import Engineering.Types.App (AppEffects)
-import Presto.Core.Flow (APIRunner, Flow, PermissionRunner(..), Runtime(..), UIRunner, run)
+import Presto.Core.Flow (APIRunner, Flow, PermissionRunner(..), Runtime(..), UIRunner, runFlow)
 import Presto.Core.Types.App (STORAGE)
 import Presto.Core.Types.Permission (Permission, PermissionResponse, PermissionStatus(..))
 import Product.BillPay (billPayFlow)
@@ -20,7 +20,7 @@ import Product.BillPay (billPayFlow)
 launchApp :: Eff (AppEffects) Unit
 launchApp = do
   let runtime = Runtime uiRunner permissionRunner apiRunner
-  let freeFlow = S.evalStateT (run runtime mainFlow)
+  let freeFlow = S.evalStateT (runFlow runtime mainFlow)
   launchAff_ (makeVar empty >>= freeFlow)
   where
     uiRunner :: UIRunner
