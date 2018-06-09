@@ -18,7 +18,7 @@ import Presto.Core.Types.Language.Flow (PermissionCheckRunner, PermissionRunner(
 import Presto.Core.Types.Language.Interaction (class Interact, Interaction, defaultInteract, request)
 import Presto.Core.Types.Language.Permission (PermissionF, checkPermissions, takePermissions)
 import Presto.Core.Types.Language.Storage (class Serializable, Key)
-import Presto.Core.Types.Language.Store (Store(..), StoreF, get, set, load, save)
+import Presto.Core.Types.Language.Store (Store(..), StoreF, get, set, load, save, getS, setS, loadS, saveS)
 import Presto.Core.Types.Language.Types (class Run, run)
 import Presto.Core.Types.Language.UI (GuiF, UIResult, evalUI, forkUI, initUI, initUIWithScreen, runUI, runUI', showUI, runScreen, forkScreen, throwErr, withError)
 import Presto.Core.Utils.Inject (class Inject, inject)
