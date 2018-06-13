@@ -19,7 +19,7 @@ instance injectLeftCoproduct :: Inject f (Coproduct f g) where
     inj = Coproduct <<< Left
     prj = coproduct Just (const Nothing)
 
-instance injectRightCoproduct :: Inject f g => Inject f (Coproduct f g) where
+instance injectRightCoproduct :: Inject f g => Inject f (Coproduct h g) where
     inj = Coproduct <<< Right <<< inj
     prj = coproduct (const Nothing) prj
 
