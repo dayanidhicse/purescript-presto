@@ -6,7 +6,7 @@ Originally, the Flow Free monad is designed as one big monad. It has functionali
 
 ## Solutions
 
-The first problem to tackle is seperating the different domains of operations into their own EDSL. So all UI operations are groupped into a GuiF algebra data type, cache operations into their own ADT, etc. While flow operations like fork/await/launch/doAff are in the new Flow monad. Then we have to make it easy that users can compose different EDSL operations in one function easily and let type system to prevent any unintended function calls. Thankfully, we can compose Free monad easily using Coproduct and a Inject class.
+The first problem to tackle is seperating the different domains of operations into their own EDSL. So all UI operations are groupped into a GuiF algebra data type, cache operations into their own ADT, etc. While flow operations like fork/await/launch/doAff are in the new Flow monad. Then we have to make it easy that users can compose different EDSL operations in one function and let type system to prevent any unintended function calls. Thankfully, we can compose Free monad easily using Coproduct and a Inject class.
 
 The Inject class and instances are defined like this:
 
@@ -66,7 +66,7 @@ instance runCoproduct :: (Run f m, Run g m) => Run (Coproduct f g) m where
 run :: forall f m a. Run f m => MonadRec m => Free f a -> m a
 run = foldFree runAlgebra
 ```
-Here, "Run f m" means I can interpret "f a" into "m a". As you can see, if we can interpret f to m and g to m, then we can interpret the Coproduct f m into m. With the help of foldFree function, "run" is defined to actually interpret a Free monad into result m monad.
+Here, "Run f m" means I can interpret "f a" into "m a". As you can see, if we can interpret f to m and g to m, then we can interpret the Coproduct f g into m. With the help of foldFree function, "run" is defined to actually interpret a Free monad into result m monad.
 
 Now we can define interpreters for those EDSLs like GuiF, ApiF. But what context monad should we interpret them to? We can define instances like "Run GuiF (Aff e)" to interpret GuiF into Aff. But there're three problems here.
 
@@ -86,7 +86,7 @@ data Exists :: (Type -> Type) -> Type
 ```
 But it also make the code more complex and hard to define instances, as we use data types like "FlowMethod a s" and "Exists (FlowMethod a)" to hide the s inside. We can't define instances for "FlowMethod s" over type variable a.
 
-Under the hood, it's just unsafeCoerce data types to fool the type system. In order to make it easy for use to use, I've defined a similar Existing data type:
+Under the hood, it's just unsafeCoerce data types to fool the type system. In order to make it easy for us to use, I've defined a similar Existing data type:
 ```
 data Existing :: (Type -> Type -> Type) -> Type -> Type
 ```
