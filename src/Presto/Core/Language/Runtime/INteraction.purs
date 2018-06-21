@@ -29,12 +29,12 @@ runUIInteraction uiRunner = foldFree (interpretInteractionF uiRunner)
 
 type APIRunner = forall e. API.Request -> Aff e String
 
-interpretAPIInteractionF :: forall eff. APIRunner -> InteractionF ~> AppFlow eff
+interpretAPIInteractionF :: forall eff. APIRunner -> InteractionF ~> Aff eff
 interpretAPIInteractionF apiRunner (Request (ForeignIn fgnIn) nextF) = do
     case runExcept $ decode fgnIn of
         -- this error should never happen if the `apiInteract` function is made right
         Left err -> throwError $ error $ "apiInteract is broken: " <> show err
         Right req -> apiRunner req >>= (encode >>> ForeignOut >>> nextF >>> pure)
 
-runAPIInteraction :: forall eff. APIRunner -> Interaction ~> AppFlow eff
+runAPIInteraction :: forall eff. APIRunner -> Interaction ~> Aff eff
 runAPIInteraction apiRunner = foldFree (interpretAPIInteractionF apiRunner)
