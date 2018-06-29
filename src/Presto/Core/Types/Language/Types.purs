@@ -13,3 +13,13 @@ instance runCoproduct :: (Run f m, Run g m) => Run (Coproduct f g) m where
 
 run :: forall f m a. Run f m => MonadRec m => Free f a -> m a
 run = foldFree runAlgebra
+
+
+class Interpret f g where
+  interpretAlgebra :: forall a. f a -> Free g a
+
+instance interpretCoproduct :: (Interpret f h, Interpret g h) => Interpret (Coproduct f g) h where
+  interpretAlgebra (Coproduct e) = either interpretAlgebra interpretAlgebra e
+
+interpret :: forall f g a. Interpret f g => Free f a -> Free g a
+interpret = foldFree interpretAlgebra
