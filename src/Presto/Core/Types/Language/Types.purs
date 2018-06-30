@@ -24,11 +24,11 @@ instance interpretCoproduct :: (Interpret f h, Interpret g h) => Interpret (Copr
 interpret :: forall f g a. Interpret f g => Free f a -> Free g a
 interpret = foldFree interpretAlgebra
 
-class InterpretWithParam f g where
-  interpretWithParam :: forall p a. p -> f a -> Free g a
+class InterpretWithParam p f g where
+  interpretWithParam :: forall a. p -> f a -> Free g a
 
-instance interpretWithParamCoproduct :: (InterpretWithParam f h, InterpretWithParam g h) => InterpretWithParam (Coproduct f g) h where
+instance interpretWithParamCoproduct :: (InterpretWithParam p f h, InterpretWithParam p g h) => InterpretWithParam p (Coproduct f g) h where
   interpretWithParam p (Coproduct e) = either (interpretWithParam p) (interpretWithParam p) e
 
-interpretWithParameter :: forall p f g a. InterpretWithParam f g => p -> Free f a -> Free g a
+interpretWithParameter :: forall p f g a. InterpretWithParam p f g => p -> Free f a -> Free g a
 interpretWithParameter p = foldFree (interpretWithParam p)
