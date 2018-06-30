@@ -14,6 +14,14 @@ instance runCoproduct :: (Run f m, Run g m) => Run (Coproduct f g) m where
 run :: forall f m a. Run f m => MonadRec m => Free f a -> m a
 run = foldFree runAlgebra
 
+class RunWithParam p f m where
+  runWithParam :: forall a. p -> f a -> m a
+
+instance runWithParamCoproduct :: (RunWithParam p f m, RunWithParam p g m) => RunWithParam p (Coproduct f g) m where
+  runWithParam p (Coproduct e) = either (runWithParam p) (runWithParam p) e
+
+runWithParameter :: forall f m a p. RunWithParam p f m => MonadRec m => p -> Free f a -> m a
+runWithParameter p = foldFree (runWithParam p)
 
 class Interpret f g where
   interpretAlgebra :: forall a. f a -> Free g a
