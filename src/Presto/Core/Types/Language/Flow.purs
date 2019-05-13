@@ -9,6 +9,7 @@ import Data.Maybe (Maybe)
 import Data.Time.Duration (class Duration, Milliseconds, fromDuration)
 import Effect.Aff (Aff, makeAff)
 import Effect.Aff.AVar as AV
+import Effect.Ref as Ref
 import Effect.Exception (Error)
 import Foreign.Class (class Decode, class Encode)
 
@@ -18,7 +19,7 @@ import Presto.Core.Types.Language.Interaction (class Interact, Interaction, inte
 import Presto.Core.Types.Language.Storage (Key, class Serializable, serialize, deserialize)
 import Presto.Core.Types.Permission (Permission, PermissionStatus, PermissionResponse)
 
-import PrestoDOM.Core (runScreen, showScreen, initUI, initUIWithScreen) as PrestoDOM
+import PrestoDOM.Core (runScreen, showScreen, initUI, initUIWithScreen, ScreenData) as PrestoDOM
 import PrestoDOM.Types.Core (Screen)
 
 
@@ -147,20 +148,20 @@ doAff :: forall s. Aff s -> Flow s
 doAff aff = wrap $ DoAff aff identity
 
 -- | Initialize all states and machines required by PrestoDOM. Returns control back immediately.
-initUI :: Flow Unit
+initUI :: Flow (Ref.Ref PrestoDOM.ScreenData)
 initUI = wrap $ InitUI (makeAff (\cb -> PrestoDOM.initUI cb)) identity
 
 -- | Initialize all states and machines required by PrestoDOM. Takes a PrestoDOM Screen and returns control back immediately.
-initUIWithScreen :: forall action state. (Screen action state Unit) -> Flow Unit
+initUIWithScreen :: forall action state. (Screen action state Unit) -> Flow (Ref.Ref PrestoDOM.ScreenData)
 initUIWithScreen screen = wrap $ InitUIWithScreen (makeAff (\cb -> PrestoDOM.initUIWithScreen screen cb)) identity
 
 -- | Runs PrestoDOM Screen and returns the result. In this case, the whole screen is rerendered.
-runScreen :: forall action state s. (Screen action state s) -> Flow s
-runScreen screen = wrap $ RunScreen (makeAff (\cb -> PrestoDOM.runScreen screen cb)) identity
+runScreen :: forall action state s sN. Show sN => Eq sN =>  Ref.Ref PrestoDOM.ScreenData -> sN -> (Screen action state s) -> Flow s
+runScreen ref sn screen = wrap $ RunScreen (makeAff (\cb -> PrestoDOM.runScreen ref sn screen cb)) identity
 
 -- | Runs PrestoDOM Screen as overlay. Overlay screens are cached for reusing.
-showScreen :: forall action state s. (Screen action state s) -> Flow s
-showScreen screen = wrap $ ShowScreen (makeAff (\cb -> PrestoDOM.showScreen screen cb)) identity
+showScreen :: forall action state s sN. Show sN => Eq sN =>  Ref.Ref PrestoDOM.ScreenData -> sN -> (Screen action state s) -> Flow s
+showScreen ref sn screen = wrap $ ShowScreen (makeAff (\cb -> PrestoDOM.showScreen ref sn screen cb)) identity
 
 
 -- | Awaits result from a forked flow.
@@ -196,3 +197,4 @@ checkPermissions permissions = wrap $ CheckPermissions permissions identity
 -- | Tries to aquire permissions.
 takePermissions :: Array Permission -> Flow (Array PermissionResponse)
 takePermissions permissions = wrap $ TakePermissions permissions identity
+
