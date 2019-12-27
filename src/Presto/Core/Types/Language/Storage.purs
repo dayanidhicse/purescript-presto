@@ -11,7 +11,7 @@ import Control.Monad.Except (runExcept)
 import Data.Either (either)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
-import Foreign.Class (class Decode)
+import Foreign.Class (class Decode, class Encode)
 import Foreign.Generic (decodeJSON, encodeJSON)
 
 type Key = String
@@ -46,3 +46,7 @@ instance charSerializable :: Serializable Char where
 instance arraySerializable :: Serializable a => Serializable (Array a) where
   serialize = map serialize >>> encodeJSON
   deserialize a = primDeserialize a >>= traverse deserialize
+
+instance recordSerializable :: (Encode (Record r), Decode (Record r)) => Serializable (Record r) where 
+  serialize = encodeJSON
+  deserialize = primDeserialize
